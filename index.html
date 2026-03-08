@@ -1,0 +1,755 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flappy Fate</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --panel: #12121a;
+    --border: #2a2a3a;
+    --accent: #f7c948;
+    --accent2: #e05c5c;
+    --green: #4ade80;
+    --sky1: #0d1b2a;
+    --sky2: #1b2f45;
+    --pipe: #2d6a2d;
+    --pipe-light: #3a8a3a;
+    --pipe-dark: #1e4a1e;
+    --ground: #3a2a1a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: #fff;
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  /* SETUP SCREEN */
+  #setup-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    max-width: 480px;
+    padding: 24px;
+    animation: fadeIn 0.5s ease;
+  }
+
+  @keyframes fadeIn { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+
+  .title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 22px;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(247,201,72,0.5), 3px 3px 0 #7a5a00;
+    text-align: center;
+    letter-spacing: 2px;
+  }
+
+  .subtitle {
+    font-size: 10px;
+    color: #888;
+    text-align: center;
+    line-height: 1.8;
+    font-family: 'Press Start 2P', monospace;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    width: 100%;
+  }
+
+  .panel-label {
+    font-size: 10px;
+    color: var(--accent);
+    font-family: 'Press Start 2P', monospace;
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  input[type="text"], input[type="number"] {
+    background: #0a0a0f;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: #fff;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    flex: 1;
+  }
+
+  input[type="text"]:focus, input[type="number"]:focus {
+    border-color: var(--accent);
+  }
+
+  .btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn:hover { background: #ffe080; transform: translateY(-1px); }
+  .btn:active { transform: translateY(1px); }
+
+  .btn-start {
+    width: 100%;
+    font-size: 12px;
+    padding: 16px;
+    background: var(--green);
+    margin-top: 4px;
+    letter-spacing: 1px;
+  }
+  .btn-start:hover { background: #86efac; }
+  .btn-start:disabled { background: #333; color: #666; cursor: not-allowed; transform: none; }
+
+  .choices-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    min-height: 36px;
+  }
+
+  .choice-tag {
+    background: #1e1e2e;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px;
+    color: #ccc;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: popIn 0.2s ease;
+  }
+
+  @keyframes popIn { from { transform: scale(0.7); opacity:0; } to { transform: scale(1); opacity:1; } }
+
+  .choice-tag button {
+    background: none;
+    border: none;
+    color: #e05c5c;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    transition: color 0.1s;
+  }
+  .choice-tag button:hover { color: #ff8080; }
+
+  .score-setup {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .score-setup label {
+    font-size: 11px;
+    color: #888;
+    white-space: nowrap;
+  }
+  input[type="number"] { width: 80px; flex: none; }
+
+  .empty-hint {
+    font-size: 11px;
+    color: #444;
+    font-style: italic;
+    align-self: center;
+  }
+
+  /* GAME SCREEN */
+  #game-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    position: relative;
+  }
+
+  #game-canvas {
+    border-radius: 12px;
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  #hud {
+    position: absolute;
+    top: 12px;
+    left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 16px;
+    pointer-events: none;
+  }
+
+  .hud-score {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 18px;
+    color: #fff;
+    text-shadow: 2px 2px 0 #000, 0 0 10px rgba(0,0,0,0.8);
+  }
+
+  .hud-target {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--accent);
+    text-shadow: 1px 1px 0 #000;
+    text-align: right;
+    line-height: 1.6;
+  }
+
+  /* OVERLAY */
+  #overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(4px);
+    border-radius: 12px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 24px;
+    text-align: center;
+  }
+
+  .overlay-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 20px;
+    color: var(--accent2);
+    text-shadow: 2px 2px 0 #600;
+    animation: shake 0.4s ease;
+  }
+
+  .overlay-title.win {
+    color: var(--green);
+    text-shadow: 2px 2px 0 #004a1e;
+    animation: none;
+  }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+
+  .overlay-score {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    color: #888;
+  }
+
+  /* REVEAL CARD */
+  .reveal-card {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border: 2px solid var(--accent);
+    border-radius: 16px;
+    padding: 28px 36px;
+    box-shadow: 0 0 40px rgba(247,201,72,0.25);
+    animation: revealPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    max-width: 280px;
+    width: 100%;
+  }
+
+  @keyframes revealPop {
+    0% { transform: scale(0.3) rotate(-8deg); opacity: 0; }
+    70% { transform: scale(1.05) rotate(1deg); }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+
+  .reveal-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .reveal-choice {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 15px;
+    color: #fff;
+    line-height: 1.6;
+    word-break: break-word;
+  }
+
+  .btn-retry {
+    background: #1e1e2e;
+    border: 1px solid var(--border);
+    color: #ccc;
+    border-radius: 8px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-retry:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-setup {
+    background: none;
+    border: none;
+    color: #444;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    text-decoration: underline;
+    margin-top: 4px;
+  }
+  .btn-setup:hover { color: #888; }
+
+  /* Bird pixel art via canvas — no external assets */
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setup-screen">
+  <div class="title">FLAPPY<br>FATE</div>
+  <div class="subtitle">reach the score.<br>reveal your destiny.</div>
+
+  <div class="panel">
+    <div class="panel-label">🎯 TARGET SCORE</div>
+    <div class="score-setup">
+      <label>Pipes to pass:</label>
+      <input type="number" id="target-score" value="5" min="1" max="99">
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-label">🎲 CHOICE POOL</div>
+    <div class="input-row">
+      <input type="text" id="choice-input" placeholder="Enter a choice..." maxlength="40">
+      <button class="btn" onclick="addChoice()">ADD</button>
+    </div>
+    <div class="choices-list" id="choices-list">
+      <span class="empty-hint" id="empty-hint">No choices yet — add some above</span>
+    </div>
+  </div>
+
+  <button class="btn btn-start" id="start-btn" onclick="startGame()" disabled>
+    ▶ START GAME
+  </button>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="game-screen">
+  <div id="hud">
+    <div class="hud-score" id="score-display">0</div>
+    <div class="hud-target" id="target-display"></div>
+  </div>
+  <canvas id="game-canvas"></canvas>
+  <div id="overlay">
+    <!-- filled dynamically -->
+  </div>
+</div>
+
+<script>
+// ─── SETUP LOGIC ───────────────────────────────────────────
+const choices = [];
+
+function addChoice() {
+  const input = document.getElementById('choice-input');
+  const val = input.value.trim();
+  if (!val) return;
+  choices.push(val);
+  input.value = '';
+  input.focus();
+  renderChoices();
+  updateStartBtn();
+}
+
+function removeChoice(i) {
+  choices.splice(i, 1);
+  renderChoices();
+  updateStartBtn();
+}
+
+function renderChoices() {
+  const list = document.getElementById('choices-list');
+  const hint = document.getElementById('empty-hint');
+  if (choices.length === 0) {
+    list.innerHTML = '';
+    list.appendChild(hint || (() => {
+      const s = document.createElement('span');
+      s.className = 'empty-hint'; s.id = 'empty-hint';
+      s.textContent = 'No choices yet — add some above';
+      return s;
+    })());
+    return;
+  }
+  list.innerHTML = '';
+  choices.forEach((c, i) => {
+    const tag = document.createElement('div');
+    tag.className = 'choice-tag';
+    tag.innerHTML = `<span>${c}</span><button onclick="removeChoice(${i})" title="Remove">×</button>`;
+    list.appendChild(tag);
+  });
+}
+
+function updateStartBtn() {
+  document.getElementById('start-btn').disabled = choices.length < 2;
+}
+
+document.getElementById('choice-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addChoice();
+});
+
+// ─── GAME LOGIC ────────────────────────────────────────────
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+
+let W, H, targetScore, gameChoices;
+let bird, pipes, score, gameState, animId, frameCount;
+
+const PIPE_WIDTH = 52;
+const PIPE_GAP = 155;
+const PIPE_SPEED = 2.4;
+const GRAVITY = 0.38;
+const JUMP = -7.2;
+const BIRD_SIZE = 22;
+const GROUND_H = 60;
+const PIPE_SPAWN = 220;
+
+function startGame() {
+  targetScore = parseInt(document.getElementById('target-score').value) || 5;
+  gameChoices = [...choices];
+
+  document.getElementById('setup-screen').style.display = 'none';
+  const gs = document.getElementById('game-screen');
+  gs.style.display = 'flex';
+
+  W = Math.min(window.innerWidth - 16, 400);
+  H = Math.min(window.innerHeight - 40, 600);
+  canvas.width = W;
+  canvas.height = H;
+
+  document.getElementById('target-display').textContent =
+    `TARGET: ${targetScore}`;
+
+  initRound();
+}
+
+function initRound() {
+  bird = {
+    x: W * 0.25,
+    y: H * 0.45,
+    vy: 0,
+    angle: 0,
+    alive: true,
+    wingPhase: 0
+  };
+  pipes = [];
+  score = 0;
+  frameCount = 0;
+  gameState = 'waiting'; // waiting | playing | dead | won
+
+  document.getElementById('score-display').textContent = '0';
+  document.getElementById('overlay').style.display = 'none';
+
+  if (animId) cancelAnimationFrame(animId);
+  loop();
+}
+
+function flap() {
+  if (gameState === 'dead' || gameState === 'won') return;
+  if (gameState === 'waiting') gameState = 'playing';
+  bird.vy = JUMP;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); flap(); }
+});
+canvas.addEventListener('click', flap);
+canvas.addEventListener('touchstart', e => { e.preventDefault(); flap(); }, {passive:false});
+
+function spawnPipe() {
+  const minY = H * 0.15;
+  const maxY = H - GROUND_H - PIPE_GAP - H * 0.1;
+  const topH = minY + Math.random() * (maxY - minY);
+  pipes.push({ x: W + PIPE_WIDTH, topH, scored: false });
+}
+
+function loop() {
+  update();
+  draw();
+  animId = requestAnimationFrame(loop);
+}
+
+function update() {
+  if (gameState !== 'playing') return;
+
+  frameCount++;
+  bird.wingPhase += 0.3;
+
+  // Gravity
+  bird.vy += GRAVITY;
+  bird.y += bird.vy;
+  bird.angle = Math.min(Math.PI / 3, Math.max(-Math.PI / 4, bird.vy * 0.07));
+
+  // Spawn pipes
+  if (frameCount % PIPE_SPAWN === 0) spawnPipe();
+
+  // Move & score pipes
+  for (let p of pipes) {
+    p.x -= PIPE_SPEED;
+    if (!p.scored && p.x + PIPE_WIDTH < bird.x) {
+      p.scored = true;
+      score++;
+      document.getElementById('score-display').textContent = score;
+      if (score >= targetScore) {
+        triggerWin();
+        return;
+      }
+    }
+  }
+
+  // Remove offscreen
+  pipes = pipes.filter(p => p.x > -PIPE_WIDTH - 10);
+
+  // Collision: ground / ceiling
+  if (bird.y + BIRD_SIZE / 2 >= H - GROUND_H || bird.y - BIRD_SIZE / 2 <= 0) {
+    triggerDeath();
+    return;
+  }
+
+  // Collision: pipes
+  for (let p of pipes) {
+    const bx = bird.x, by = bird.y, r = BIRD_SIZE / 2 - 3;
+    const inX = bx + r > p.x && bx - r < p.x + PIPE_WIDTH;
+    if (inX) {
+      if (by - r < p.topH || by + r > p.topH + PIPE_GAP) {
+        triggerDeath();
+        return;
+      }
+    }
+  }
+}
+
+function triggerDeath() {
+  gameState = 'dead';
+  bird.alive = false;
+  setTimeout(() => showOverlay('dead'), 700);
+}
+
+function triggerWin() {
+  gameState = 'won';
+  const chosen = gameChoices[Math.floor(Math.random() * gameChoices.length)];
+  setTimeout(() => showOverlay('won', chosen), 600);
+}
+
+function showOverlay(type, chosen) {
+  const overlay = document.getElementById('overlay');
+  overlay.style.display = 'flex';
+
+  if (type === 'dead') {
+    overlay.innerHTML = `
+      <div class="overlay-title">GAME OVER</div>
+      <div class="overlay-score">Score: ${score} / ${targetScore} needed</div>
+      <button class="btn btn-retry" onclick="initRound()">▶ TRY AGAIN</button>
+      <button class="btn-setup" onclick="backToSetup()">← Edit choices</button>
+    `;
+  } else {
+    overlay.innerHTML = `
+      <div class="overlay-title win">YOU DID IT!</div>
+      <div class="overlay-score">Score: ${score}</div>
+      <div class="reveal-card">
+        <div class="reveal-label">✦ fate reveals ✦</div>
+        <div class="reveal-choice">${chosen}</div>
+      </div>
+      <button class="btn btn-retry" onclick="initRound()">▶ PLAY AGAIN</button>
+      <button class="btn-setup" onclick="backToSetup()">← Edit choices</button>
+    `;
+  }
+}
+
+function backToSetup() {
+  cancelAnimationFrame(animId);
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'flex';
+  document.getElementById('overlay').style.display = 'none';
+}
+
+// ─── DRAW ──────────────────────────────────────────────────
+function draw() {
+  // Sky gradient
+  const sky = ctx.createLinearGradient(0, 0, 0, H - GROUND_H);
+  sky.addColorStop(0, '#0d1b2a');
+  sky.addColorStop(1, '#1b3a5c');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H - GROUND_H);
+
+  // Stars (static)
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  const stars = [[30,20],[80,45],[150,15],[200,60],[300,25],[360,50],[60,80],[250,40],[330,70],[110,35]];
+  for (let [sx, sy] of stars) {
+    ctx.fillRect(sx, sy, 1.5, 1.5);
+  }
+
+  // Pipes
+  for (let p of pipes) {
+    drawPipe(p.x, 0, PIPE_WIDTH, p.topH, true);
+    drawPipe(p.x, p.topH + PIPE_GAP, PIPE_WIDTH, H - GROUND_H - p.topH - PIPE_GAP, false);
+  }
+
+  // Ground
+  ctx.fillStyle = '#3a2a1a';
+  ctx.fillRect(0, H - GROUND_H, W, GROUND_H);
+  ctx.fillStyle = '#4a6741';
+  ctx.fillRect(0, H - GROUND_H, W, 10);
+
+  // Ground stripes
+  ctx.fillStyle = '#3d5635';
+  for (let i = 0; i < W; i += 40) {
+    ctx.fillRect(i, H - GROUND_H, 20, 10);
+  }
+
+  // Bird
+  drawBird();
+
+  // Score bar at top
+  if (gameState === 'playing' || gameState === 'waiting') {
+    const prog = Math.min(score / targetScore, 1);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(0, 0, W, 4);
+    ctx.fillStyle = score >= targetScore ? '#4ade80' : '#f7c948';
+    ctx.fillRect(0, 0, W * prog, 4);
+  }
+
+  // Waiting hint
+  if (gameState === 'waiting') {
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    roundRect(ctx, W/2 - 90, H/2 - 16, 180, 32, 8);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = '9px "Press Start 2P"';
+    ctx.textAlign = 'center';
+    ctx.fillText('TAP / SPACE to start', W/2, H/2 + 4);
+  }
+}
+
+function drawPipe(x, y, w, h, isTop) {
+  if (h <= 0) return;
+  const capH = 18, capExtra = 5;
+
+  // Body
+  ctx.fillStyle = '#2d6a2d';
+  ctx.fillRect(x, y, w, h);
+
+  // Shading left edge
+  ctx.fillStyle = '#3a8a3a';
+  ctx.fillRect(x, y, 6, h);
+
+  // Dark right edge
+  ctx.fillStyle = '#1e4a1e';
+  ctx.fillRect(x + w - 6, y, 6, h);
+
+  // Cap
+  const capY = isTop ? h - capH : y;
+  ctx.fillStyle = '#2d6a2d';
+  ctx.fillRect(x - capExtra, capY, w + capExtra * 2, capH);
+  ctx.fillStyle = '#3a8a3a';
+  ctx.fillRect(x - capExtra, capY, 7, capH);
+  ctx.fillStyle = '#1e4a1e';
+  ctx.fillRect(x - capExtra + w + capExtra * 2 - 7, capY, 7, capH);
+  // Cap top/bottom line
+  ctx.fillStyle = '#4aaa4a';
+  ctx.fillRect(x - capExtra, isTop ? h - capH : y, w + capExtra * 2, 2);
+}
+
+function drawBird() {
+  ctx.save();
+  ctx.translate(bird.x, bird.y);
+  ctx.rotate(bird.angle);
+
+  // Body
+  ctx.fillStyle = bird.alive ? '#f7c948' : '#aaa';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, BIRD_SIZE / 2, BIRD_SIZE / 2 - 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Wing
+  const wingY = Math.sin(bird.wingPhase) * 3;
+  ctx.fillStyle = bird.alive ? '#e8a800' : '#888';
+  ctx.beginPath();
+  ctx.ellipse(-4, wingY, 8, 5, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Eye
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(5, -3, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#1a1a2e';
+  ctx.beginPath();
+  ctx.arc(6.5, -3, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Shine
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(7.2, -4, 1, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Beak
+  ctx.fillStyle = '#e05c1a';
+  ctx.beginPath();
+  ctx.moveTo(9, 0);
+  ctx.lineTo(16, -2);
+  ctx.lineTo(9, 3);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+</script>
+</body>
+</html>
